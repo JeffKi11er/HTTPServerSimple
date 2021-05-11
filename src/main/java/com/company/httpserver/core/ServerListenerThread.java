@@ -9,7 +9,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class ServerListenerThread extends Thread{
+public class ServerListenerThread extends Thread {
     private final static Logger LOGGER = LoggerFactory.getLogger(ServerListenerThread.class);
     private int port;
     private String webroot;
@@ -24,33 +24,25 @@ public class ServerListenerThread extends Thread{
     @Override
     public void run() {
         try {
-            Socket socket = serverSocket.accept();
-            LOGGER.info("* Connetion accepted: " + socket.getInetAddress()); //socket get the address of the client
-            InputStream inputStream = socket.getInputStream();
-            OutputStream outputStream = socket.getOutputStream();
-
-            String html = "<html>" +
-                    "<head>" +
-                    "<title>HTTP local host </title>" +
-                    "</head>" +
-                    "<body>" +
-                    "<h1>This pages is belong to Thiet </h1>" +
-                    "</body>" +
-                    "</html>";
-            final String CRLF = "\n\r"; //carriage return and the line feed //13,10 ASCII
-            String response = "HTTP/1.1 200 OK" +//Status line : HTTP_VERSION RESPONSE_CODE RESPONSE_MESSAGE
-                    CRLF +
-                    "Content-Length: "+html.getBytes().length +CRLF +//HEADER//Content length is the size
-                    CRLF+
-                    html +CRLF+
-                    CRLF;
-            outputStream.write(response.getBytes());
-            inputStream.close();
-            outputStream.close();
-            socket.close();
-            serverSocket.close();
+            while (serverSocket.isBound() && !serverSocket.isClosed()) {
+                Socket socket = serverSocket.accept();
+                LOGGER.info("* Connection accepted: " + socket.getInetAddress()); //socket get the address of the client
+                HTTPConnectionWorkThread workThread = new HTTPConnectionWorkThread(socket);
+                workThread.start();
+                sleep(1000);
+            }
         } catch (IOException e) {
             e.printStackTrace();
+            LOGGER.error("Problem with setting socket", e);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            if (serverSocket != null) {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                }
+            }
         }
     }
 }
